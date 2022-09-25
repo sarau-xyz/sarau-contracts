@@ -49,7 +49,7 @@ contract SarauMaker is AccessControl {
         string calldata name,
         string calldata symbol
     ) external payable {
-        require(msg.value == creationFee, "incorrent fee");
+        require(msg.value == creationFee, "incorrect fee");
         require(startDate_ > 0, "startDate_ must be greater than zero");
         require(endDate_ > 0, "endDate_ must be greater than zero");
         require(
