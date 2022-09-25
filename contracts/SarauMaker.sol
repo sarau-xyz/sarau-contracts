@@ -12,7 +12,6 @@ contract SarauMaker is AccessControl {
         uint256 minted;
         uint256 startDate;
         uint256 endDate;
-        string uri;
         string homepage;
         address nft;
     }
@@ -58,7 +57,7 @@ contract SarauMaker is AccessControl {
         );
 
         address clone = Clones.clone(tokenImplementation);
-        SarauNFT(clone).initialize(name, symbol);
+        SarauNFT(clone).initialize(name, symbol, uri_);
 
         saraus[currentIndex] = SarauInfo(
             _msgSender(),
@@ -66,7 +65,6 @@ contract SarauMaker is AccessControl {
             0,
             startDate_,
             endDate_,
-            uri_,
             homepage_,
             clone
         );
@@ -77,7 +75,7 @@ contract SarauMaker is AccessControl {
     /**
      * @dev Return a single Sarau by provided index.
      */
-    function getSarau(uint256 index_) external view returns (SarauInfo) {
+    function getSarau(uint256 index_) external view returns (SarauInfo memory) {
         return saraus[index_];
     }
 
