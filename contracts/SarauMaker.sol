@@ -31,8 +31,8 @@ contract SarauMaker is AccessControl {
     event EtherFlushed(address indexed sender, uint256 amount);
     event SarauCreated(address indexed owner, uint256 indexed id);
 
-    constructor() {
-        tokenImplementation = address(new SarauNFT());
+    constructor(address tokenImplementation_) {
+        tokenImplementation = tokenImplementation_;
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
 

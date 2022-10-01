@@ -21,7 +21,12 @@ contract SarauNFT is ERC721AUpgradeable, Initializable, OwnableUpgradeable {
     /**
      * @dev Return NFT URI.
      */
-    function tokenURI() external view returns (string memory) {
+    function tokenURI(uint256 tokenId)
+        public
+        view
+        override
+        returns (string memory)
+    {
         return _tokenURI;
     }
 
