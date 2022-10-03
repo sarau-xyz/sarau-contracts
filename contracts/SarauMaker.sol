@@ -4,8 +4,9 @@ pragma solidity ^0.8.4;
 import "./SarauNFT.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "redstone-evm-connector/lib/contracts/message-based/PriceAware.sol";
 
-contract SarauMaker is AccessControl {
+contract SarauMaker is AccessControl, PriceAware {
     struct SarauInfo {
         address owner;
         uint256 maxMint;
@@ -17,12 +18,13 @@ contract SarauMaker is AccessControl {
     }
 
     uint256 public currentIndex;
-    uint256 public creationFee;
+    uint256 public creationUSDFee;
 
     mapping(uint256 => SarauInfo) public saraus;
     mapping(uint256 => mapping(address => bool)) public addressToMints;
 
     address public immutable tokenImplementation;
+    bytes32 public immutable currency;
 
     /**
      * @dev Events
@@ -31,8 +33,9 @@ contract SarauMaker is AccessControl {
     event EtherFlushed(address indexed sender, uint256 amount);
     event SarauCreated(address indexed owner, uint256 indexed id);
 
-    constructor(address tokenImplementation_) {
+    constructor(address tokenImplementation_, string calldata currency_) {
         tokenImplementation = tokenImplementation_;
+        currency = bytes32(currency_);
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
 
@@ -48,13 +51,18 @@ contract SarauMaker is AccessControl {
         string calldata name,
         string calldata symbol
     ) external payable {
-        require(msg.value == creationFee, "incorrect fee");
         require(startDate_ > 0, "startDate_ must be greater than zero");
         require(endDate_ > 0, "endDate_ must be greater than zero");
         require(
             endDate_ > startDate_,
             "endDate_ must be greater than startDate_"
         );
+
+        // TODO
+        // do math here
+        uint256 celoPrice = getPriceFromMsg(currency);
+        memory uint8 feeInCelo = celoPrice * creationUSDFee; 
+        require(msg.value == feeInCelo, "incorrect fee");
 
         address clone = Clones.clone(tokenImplementation);
         SarauNFT(clone).initialize(name, symbol, uri_);
@@ -86,7 +94,7 @@ contract SarauMaker is AccessControl {
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        creationFee = creationFee_;
+        creationUSDFee = creationFee_;
     }
 
     /**
@@ -133,5 +141,10 @@ contract SarauMaker is AccessControl {
      */
     receive() external payable {
         emit ReceivedEther(msg.sender, msg.value);
+    }
+
+     function isSignerAuthorized(address _receviedSigner)
+      public override virtual view returns (bool) {
+        return _receivedSigner == 0x0C39486f770B26F5527BBBf942726537986Cd7eb;
     }
 }
