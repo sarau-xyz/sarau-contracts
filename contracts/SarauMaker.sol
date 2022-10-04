@@ -33,9 +33,9 @@ contract SarauMaker is AccessControl, PriceAware {
     event EtherFlushed(address indexed sender, uint256 amount);
     event SarauCreated(address indexed owner, uint256 indexed id);
 
-    constructor(address tokenImplementation_, string calldata currency_) {
+    constructor(address tokenImplementation_, bytes32 currency_) {
         tokenImplementation = tokenImplementation_;
-        currency = bytes32(currency_);
+        currency = currency_;
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
 
@@ -58,10 +58,8 @@ contract SarauMaker is AccessControl, PriceAware {
             "endDate_ must be greater than startDate_"
         );
 
-        // TODO
-        // do math here
         uint256 celoPrice = getPriceFromMsg(currency);
-        memory uint8 feeInCelo = celoPrice * creationUSDFee; 
+        uint256 feeInCelo = celoPrice * creationUSDFee;
         require(msg.value == feeInCelo, "incorrect fee");
 
         address clone = Clones.clone(tokenImplementation);
@@ -143,8 +141,13 @@ contract SarauMaker is AccessControl, PriceAware {
         emit ReceivedEther(msg.sender, msg.value);
     }
 
-     function isSignerAuthorized(address _receviedSigner)
-      public override virtual view returns (bool) {
+    function isSignerAuthorized(address _receivedSigner)
+        public
+        view
+        virtual
+        override
+        returns (bool)
+    {
         return _receivedSigner == 0x0C39486f770B26F5527BBBf942726537986Cd7eb;
     }
 }
