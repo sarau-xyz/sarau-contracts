@@ -58,9 +58,7 @@ contract SarauMaker is AccessControl, PriceAware {
             "endDate_ must be greater than startDate_"
         );
 
-        uint256 celoPrice = getPriceFromMsg(currency);
-        uint256 feeInCelo = celoPrice * creationUSDFee;
-        require(msg.value == feeInCelo, "incorrect fee");
+        require(msg.value == creationEtherFee(), "incorrect fee");
 
         address clone = Clones.clone(tokenImplementation);
         SarauNFT(clone).initialize(name, symbol, uri_);
@@ -93,6 +91,10 @@ contract SarauMaker is AccessControl, PriceAware {
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         creationUSDFee = creationFee_;
+    }
+
+    function creationEtherFee() public view returns (uint256) {
+        return getPriceFromMsg(currency) * creationUSDFee;
     }
 
     /**
