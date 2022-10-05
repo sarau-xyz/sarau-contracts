@@ -26,6 +26,8 @@ contract SarauMaker is AccessControl, PriceAware {
     address public immutable tokenImplementation;
     bytes32 public immutable currency;
 
+    address public redstoneSigner;
+
     /**
      * @dev Events
      */
@@ -74,6 +76,8 @@ contract SarauMaker is AccessControl, PriceAware {
         );
 
         currentIndex++;
+
+        emit SarauCreated(clone, currentIndex);
     }
 
     /**
@@ -81,6 +85,13 @@ contract SarauMaker is AccessControl, PriceAware {
      */
     function getSarau(uint256 index_) external view returns (SarauInfo memory) {
         return saraus[index_];
+    }
+
+    function setRedstoneSigner(address redstoneSigner_)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        redstoneSigner = redstoneSigner_;
     }
 
     /**
@@ -150,6 +161,6 @@ contract SarauMaker is AccessControl, PriceAware {
         override
         returns (bool)
     {
-        return _receivedSigner == 0x0C39486f770B26F5527BBBf942726537986Cd7eb;
+        return _receivedSigner == redstoneSigner;
     }
 }

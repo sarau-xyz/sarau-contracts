@@ -1,6 +1,7 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
+import { WrapperBuilder } from "redstone-evm-connector";
 
 const CURRENCY = "CELO";
 
@@ -17,7 +18,19 @@ describe("SarauMaker", function () {
       ethers.utils.formatBytes32String(CURRENCY)
     );
 
-    return { sarauMaker, sarauNFT, owner, otherAccount };
+    // mock signer
+    await sarauMaker.setRedstoneSigner(
+      "0xFE71e9691B9524BC932C23d0EeD5c9CE41161884"
+    );
+
+    return {
+      sarauMaker: WrapperBuilder.mockLite(sarauMaker).using({
+        [CURRENCY]: 10,
+      }),
+      sarauNFT,
+      owner,
+      otherAccount,
+    };
   }
 
   describe("Deployment", function () {
@@ -30,16 +43,233 @@ describe("SarauMaker", function () {
       expect(await sarauMaker.currency()).to.equal(
         ethers.utils.formatBytes32String(CURRENCY)
       );
+      expect(await sarauMaker.creationUSDFee()).to.equal(0);
     });
   });
 
-  describe("Sarau flow", function () {
-    it("Should create a new Sarau", async function () {
-      const { sarauNFT, sarauMaker } = await loadFixture(
-        deploySarauMakerFixture
-      );
+  describe("Sarau creation flow", function () {
+    it("Should revert with startDate_ must be a positive number", async function () {
+      const { sarauMaker } = await loadFixture(deploySarauMakerFixture);
 
-      await sarauMaker.createSarau();
+      const maxMint = 1,
+        startDate = 0,
+        endDate = 0,
+        uri = "",
+        homepage = "",
+        name = "",
+        symbol = "";
+
+      expect(
+        sarauMaker.createSarau(
+          maxMint,
+          startDate,
+          endDate,
+          uri,
+          homepage,
+          name,
+          symbol
+        )
+      ).to.revertedWith("startDate_ must be a positive number");
+    });
+
+    it("Should revert with endDate_ must be greater than zero", async function () {
+      const { sarauMaker } = await loadFixture(deploySarauMakerFixture);
+
+      const maxMint = 1,
+        startDate = 1,
+        endDate = 0,
+        uri = "",
+        homepage = "",
+        name = "",
+        symbol = "";
+
+      await expect(
+        sarauMaker.createSarau(
+          maxMint,
+          startDate,
+          endDate,
+          uri,
+          homepage,
+          name,
+          symbol
+        )
+      ).to.revertedWith("endDate_ must be greater than zero");
+    });
+
+    it("Should revert with endDate_ must be greater than startDate_", async function () {
+      const { sarauMaker } = await loadFixture(deploySarauMakerFixture);
+
+      const maxMint = 1,
+        startDate = 11,
+        endDate = 10,
+        uri = "",
+        homepage = "",
+        name = "",
+        symbol = "";
+
+      await expect(
+        sarauMaker.createSarau(
+          maxMint,
+          startDate,
+          endDate,
+          uri,
+          homepage,
+          name,
+          symbol
+        )
+      ).to.revertedWith("endDate_ must be greater than startDate_");
+    });
+
+    it("Should revert with incorrect fee", async function () {
+      const { sarauMaker } = await loadFixture(deploySarauMakerFixture);
+
+      const maxMint = 1,
+        startDate = 10,
+        endDate = 11,
+        uri = "",
+        homepage = "",
+        name = "",
+        symbol = "";
+
+      await expect(
+        sarauMaker.createSarau(
+          maxMint,
+          startDate,
+          endDate,
+          uri,
+          homepage,
+          name,
+          symbol,
+          {
+            value: 10,
+          }
+        )
+      ).to.revertedWith("incorrect fee");
+    });
+
+    it("Should revert with outside mint window", async function () {
+      const { sarauMaker } = await loadFixture(deploySarauMakerFixture);
+
+      const timeNow = await time.latest();
+
+      const maxMint = 1,
+        startDate = timeNow,
+        endDate = timeNow + 1000,
+        uri = "",
+        homepage = "",
+        name = "",
+        symbol = "";
+
+      await expect(
+        sarauMaker.createSarau(
+          maxMint,
+          startDate,
+          endDate,
+          uri,
+          homepage,
+          name,
+          symbol
+        )
+      ).to.emit(sarauMaker, "SarauCreated");
+
+      await time.increaseTo(endDate + 1000);
+
+      await expect(sarauMaker.mint(0)).to.revertedWith("outside mint window");
+    });
+
+    it("Should revert with already minted", async function () {
+      const { sarauMaker } = await loadFixture(deploySarauMakerFixture);
+
+      const timeNow = await time.latest();
+
+      const maxMint = 2,
+        startDate = timeNow,
+        endDate = timeNow + 1000,
+        uri = "",
+        homepage = "",
+        name = "",
+        symbol = "";
+
+      await expect(
+        sarauMaker.createSarau(
+          maxMint,
+          startDate,
+          endDate,
+          uri,
+          homepage,
+          name,
+          symbol
+        )
+      ).to.emit(sarauMaker, "SarauCreated");
+
+
+      await sarauMaker.mint(0);
+
+      await expect(sarauMaker.mint(0)).to.revertedWith("already minted");
+    });
+
+    it("Should revert with max mint reached", async function () {
+      const { sarauMaker, otherAccount } = await loadFixture(deploySarauMakerFixture);
+
+      const timeNow = await time.latest();
+
+      const maxMint = 1,
+        startDate = timeNow,
+        endDate = timeNow + 1000,
+        uri = "",
+        homepage = "",
+        name = "",
+        symbol = "";
+
+      await expect(
+        sarauMaker.createSarau(
+          maxMint,
+          startDate,
+          endDate,
+          uri,
+          homepage,
+          name,
+          symbol
+        )
+      ).to.emit(sarauMaker, "SarauCreated");
+
+      sarauMaker.mint(0);
+      
+      await expect(sarauMaker.connect(otherAccount).mint(0)).to.revertedWith("max mint reached");
+    });
+
+    it("Should create a new Sarau and mint without redstone fee", async function () {
+      const { sarauMaker } = await loadFixture(deploySarauMakerFixture);
+
+      const timeNow = await time.latest();
+
+      const maxMint = 1,
+        startDate = timeNow,
+        endDate = timeNow + 1000,
+        uri = "",
+        homepage = "",
+        name = "",
+        symbol = "";
+
+      await expect(
+        sarauMaker.createSarau(
+          maxMint,
+          startDate,
+          endDate,
+          uri,
+          homepage,
+          name,
+          symbol
+        )
+      ).to.emit(sarauMaker, "SarauCreated");
+
+      await sarauMaker.mint(0);
+
+      await expect(sarauMaker.mint(0)).to.revertedWith("max mint reached");
+
+      const sarauCreated = await sarauMaker.getSarau(0);
+
+      expect(sarauCreated.minted).to.equal(1);
     });
   });
 });
