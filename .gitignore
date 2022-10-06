@@ -9,4 +9,5 @@ typechain-types
 cache
 artifacts
 
-/.secret
+.secret
+.apikey

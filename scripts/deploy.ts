@@ -8,7 +8,8 @@ async function main() {
 
   const SarauMaker = await ethers.getContractFactory("SarauMaker");
   const _sarauMakerInstance = await SarauMaker.deploy(
-    _sarauNFTInstance.address
+    _sarauNFTInstance.address,
+    ethers.utils.formatBytes32String('CELO'),
   );
 
   await _sarauMakerInstance.deployed();

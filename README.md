@@ -1,6 +1,10 @@
-# Sample Hardhat Project
+# SarauXYZ Smart Contracts
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a script that deploys that contract.
+This repository contains all contracts used in SarauXYZ protocol.
+
+# What is Sarau?
+Sarau is a dApp that enable users to collect NFTs that represent moments in a real life, for example, you can distribute to your audience an exclusive NFT to remember a event that you have created.
+
 
 Try running some of the following tasks:
 
