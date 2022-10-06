@@ -1,8 +1,17 @@
 {
+  "name": "sarau-contracts",
+  "description": "Solidity contracts for Sarau dApp",
+  "scripts": {
+    "postinstall": "npx hardhat compile",
+    "test": "npx harhat test"
+  },
+  "author": {
+    "name": "Gustavo Toledo",
+    "email": "gustavo@sarau.xyz"
+  },
   "dependencies": {
     "@openzeppelin/contracts": "^4.7.3",
     "@openzeppelin/contracts-upgradeable": "^4.8.0-rc.1",
-    "erc721a": "^4.2.3",
     "erc721a-upgradeable": "^4.2.2",
     "hardhat": "^2.11.1"
   },
