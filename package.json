@@ -1,6 +1,7 @@
 {
   "name": "sarau-contracts",
   "description": "Solidity contracts for Sarau dApp",
+  "version": "1.0.0",
   "scripts": {
     "postinstall": "npx hardhat compile",
     "test": "npx harhat test"
