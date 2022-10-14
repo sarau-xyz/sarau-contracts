@@ -24,8 +24,20 @@ contract SarauMaker is AccessControl, PriceAware {
     mapping(uint256 => mapping(address => bool)) public addressToMints;
 
     address public immutable tokenImplementation;
+
+    /**
+     * Blockchain native currency symbol, will be used in RedStone oracle
+     */
     bytes32 public immutable currency;
 
+    /**
+     * Ether price from RedStone oracle
+     */
+    uint256 public etherPrice;
+
+    /**
+     * RedStone signer address
+     */
     address public redstoneSigner;
 
     /**
@@ -97,15 +109,25 @@ contract SarauMaker is AccessControl, PriceAware {
     /**
      * @dev Set creation fee.
      */
-    function setCreationFee(uint256 creationFee_)
+    function setCreationUSDFee(uint256 creationFee_)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         creationUSDFee = creationFee_;
     }
 
+    /**
+     * @dev Update native currency price.
+     */
+    function updateEtherPrice() external {
+        etherPrice = getPriceFromMsg(currency);
+    }
+
+    /**
+     * @dev Return creation fee in Ether.
+     */
     function creationEtherFee() public view returns (uint256) {
-        return getPriceFromMsg(currency) * creationUSDFee;
+        return etherPrice * creationUSDFee;
     }
 
     /**
