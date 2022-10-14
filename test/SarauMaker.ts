@@ -131,7 +131,7 @@ describe("SarauMaker", function () {
       await sarauMaker.updateEtherPrice();
 
       expect(await sarauMaker.etherPrice()).to.equal(
-        BigNumber.from(ETHER_PRICE)
+        BigNumber.from(ETHER_PRICE).mul(1e8)
       );
 
       expect(await sarauMaker.creationEtherFee()).to.equal(
@@ -141,7 +141,7 @@ describe("SarauMaker", function () {
       await sarauMaker.setCreationUSDFee(CREATION_FEE);
 
       expect(await sarauMaker.creationEtherFee()).to.equal(
-        BigNumber.from(ETHER_PRICE).mul(BigNumber.from(CREATION_FEE))
+        BigNumber.from(ETHER_PRICE).mul(BigNumber.from(CREATION_FEE)).mul(1e8)
       );
     });
 
