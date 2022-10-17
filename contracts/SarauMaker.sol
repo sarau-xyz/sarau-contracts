@@ -64,7 +64,7 @@ contract SarauMaker is AccessControl, PriceAware {
         string calldata homepage_,
         string calldata name,
         string calldata symbol
-    ) external payable {
+    ) external payable returns (uint256) {
         require(startDate_ > 0, "startDate_ must be greater than zero");
         require(endDate_ > 0, "endDate_ must be greater than zero");
         require(
@@ -77,7 +77,9 @@ contract SarauMaker is AccessControl, PriceAware {
         address clone = Clones.clone(tokenImplementation);
         SarauNFT(clone).initialize(name, symbol, uri_);
 
-        saraus[currentIndex] = SarauInfo(
+        uint256 sarauIndex = currentIndex;
+
+        saraus[sarauIndex] = SarauInfo(
             _msgSender(),
             maxMint_,
             0,
@@ -90,6 +92,8 @@ contract SarauMaker is AccessControl, PriceAware {
         currentIndex++;
 
         emit SarauCreated(clone, currentIndex);
+
+        return sarauIndex;
     }
 
     /**

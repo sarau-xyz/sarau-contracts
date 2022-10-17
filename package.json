@@ -2,7 +2,7 @@
   "name": "sarau-contracts",
   "license": "MIT",
   "description": "Solidity contracts for Sarau dApp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "Gustavo Toledo",
     "email": "gustavo@sarau.xyz"
@@ -10,7 +10,7 @@
   "scripts": {
     "build": "npx hardhat compile",
     "test": "npx hardhat test",
-    "publish": "npx hardhat run ./scripts/deploy.ts"
+    "deploy": "npx hardhat run ./scripts/deploy.ts"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.7.3",
