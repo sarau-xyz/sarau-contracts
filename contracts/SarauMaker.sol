@@ -2,41 +2,47 @@
 pragma solidity ^0.8.4;
 
 import "./SarauNFT.sol";
+import "./SarauMinter.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "redstone-evm-connector/lib/contracts/message-based/PriceAware.sol";
 
 contract SarauMaker is AccessControl, PriceAware {
-    struct SarauInfo {
-        address owner;
-        uint256 maxMint;
-        uint256 minted;
-        uint256 startDate;
-        uint256 endDate;
-        string homepage;
-        address nft;
-    }
-
+    /**
+     * @dev Current index
+     */
     uint256 public currentIndex;
+    /**
+     * @dev USD fee needed to create a new Sarau
+     */
     uint256 public creationUSDFee;
 
-    mapping(uint256 => SarauInfo) public saraus;
-    mapping(uint256 => mapping(address => bool)) public addressToMints;
-
-    address public immutable tokenImplementation;
+    /**
+     * @dev All Sarau minter addresses
+     */
+    mapping(uint256 => address) public saraus;
 
     /**
-     * Blockchain native currency symbol, will be used in RedStone oracle
+     * @dev SarauNFT address
+     */
+    address public immutable nftImplementation;
+    /**
+     * @dev SarauMinter address
+     */
+    address public immutable minterImplementation;
+
+    /**
+     * @dev Blockchain native currency symbol, will be used in RedStone oracle
      */
     bytes32 public immutable currency;
 
     /**
-     * Ether price from RedStone oracle
+     * @dev Ether price from RedStone oracle
      */
     uint256 public etherPrice;
 
     /**
-     * RedStone signer address
+     * @dev RedStone signer address
      */
     address public redstoneSigner;
 
@@ -47,8 +53,13 @@ contract SarauMaker is AccessControl, PriceAware {
     event EtherFlushed(address indexed sender, uint256 amount);
     event SarauCreated(address indexed owner, uint256 indexed id);
 
-    constructor(address tokenImplementation_, bytes32 currency_) {
-        tokenImplementation = tokenImplementation_;
+    constructor(
+        address nftImplementation_,
+        address minterImplementation_,
+        bytes32 currency_
+    ) {
+        nftImplementation = nftImplementation_;
+        minterImplementation = minterImplementation_;
         currency = currency_;
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
@@ -56,6 +67,8 @@ contract SarauMaker is AccessControl, PriceAware {
     /**
      * @dev Creates a new Sarau.
      */
+
+    // TODO change this to two steps
     function createSarau(
         uint256 maxMint_,
         uint256 startDate_,
@@ -63,46 +76,51 @@ contract SarauMaker is AccessControl, PriceAware {
         string calldata uri_,
         string calldata homepage_,
         string calldata name,
-        string calldata symbol
+        string calldata symbol,
+        bytes32 code_
     ) external payable returns (uint256) {
+        require(msg.value == creationEtherFee(), "incorrect fee");
         require(startDate_ > 0, "startDate_ must be greater than zero");
         require(endDate_ > 0, "endDate_ must be greater than zero");
         require(
             endDate_ > startDate_,
             "endDate_ must be greater than startDate_"
         );
+        
+        // clone SarauNFT
+        address nftClone = Clones.clone(nftImplementation);
+        SarauNFT(nftClone).initialize(name, symbol, uri_);
 
-        require(msg.value == creationEtherFee(), "incorrect fee");
-
-        address clone = Clones.clone(tokenImplementation);
-        SarauNFT(clone).initialize(name, symbol, uri_);
-
-        uint256 sarauIndex = currentIndex;
-
-        saraus[sarauIndex] = SarauInfo(
-            _msgSender(),
+        // clone SarauMinter
+        address minterClone = Clones.clone(minterImplementation);
+        SarauMinter(minterClone).initialize(
             maxMint_,
-            0,
             startDate_,
             endDate_,
             homepage_,
-            clone
+            code_,
+            nftClone
         );
+
+        uint256 createdIndex = currentIndex;
 
         currentIndex++;
 
-        emit SarauCreated(clone, currentIndex);
+        emit SarauCreated(nftClone, currentIndex);
 
-        return sarauIndex;
+        return createdIndex;
     }
 
     /**
      * @dev Return a single Sarau by provided index.
      */
-    function getSarau(uint256 index_) external view returns (SarauInfo memory) {
+    function getSarau(uint256 index_) external view returns (address) {
         return saraus[index_];
     }
 
+    /**
+     * @dev Set Redstone Finance signer address.
+     */
     function setRedstoneSigner(address redstoneSigner_)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
@@ -132,28 +150,6 @@ contract SarauMaker is AccessControl, PriceAware {
      */
     function creationEtherFee() public view returns (uint256) {
         return etherPrice * creationUSDFee;
-    }
-
-    /**
-     * @dev Mint one Sarau NFT.
-     */
-    function mint(uint256 index_) external {
-        require(
-            saraus[index_].maxMint > saraus[index_].minted,
-            "max mint reached"
-        );
-        require(
-            block.timestamp >= saraus[index_].startDate &&
-                block.timestamp <= saraus[index_].endDate,
-            "outside mint window"
-        );
-        require(!addressToMints[index_][_msgSender()], "already minted");
-
-        // update state
-        addressToMints[index_][_msgSender()] = true;
-        saraus[index_].minted++;
-
-        SarauNFT(saraus[index_].nft).mint(_msgSender());
     }
 
     /**
