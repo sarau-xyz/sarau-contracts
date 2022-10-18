@@ -54,5 +54,40 @@ describe("SarauNFT", function () {
           .setCode(ethers.utils.formatBytes32String(""))
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
+
+    it("Should fail with invalid mint code", async function () {
+      const { sarauNFT, otherAccount } = await loadFixture(
+        deploySarauNFTFixture
+      );
+
+      const code = "123";
+
+      const timeNow = await time.latest();
+
+      await sarauNFT.initialize(
+        2,
+        timeNow - 1,
+        timeNow + 1000,
+        "https://nft.link",
+        "Non Fungible Token",
+        "NFT",
+        "https://miro.medium.com/max/560/1*YrmTwdjEuo3vDwGhagxslQ.jpeg"
+      );
+
+      await sarauNFT.setCode(ethers.utils.formatBytes32String(code));
+
+      await expect(
+        sarauNFT
+          .connect(otherAccount)
+          .mint(ethers.utils.formatBytes32String(""))
+      ).to.be.revertedWith("invalid mint code");
+
+
+      await expect(
+        sarauNFT
+          .connect(otherAccount)
+          .mint(ethers.utils.formatBytes32String(code))
+      ).to.emit(sarauNFT, "Transfer");
+    });
   });
 });

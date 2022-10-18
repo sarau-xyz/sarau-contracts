@@ -28,7 +28,7 @@ contract SarauNFT is ERC721AUpgradeable, Initializable, OwnableUpgradeable {
         string calldata name_,
         string calldata symbol_,
         string calldata tokenURI_
-    ) public initializerERC721A initializer {
+    ) external initializerERC721A initializer {
         maxMint = maxMint_;
         startDate = startDate_;
         endDate = endDate_;
