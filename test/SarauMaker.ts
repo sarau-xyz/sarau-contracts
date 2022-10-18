@@ -42,7 +42,7 @@ describe("SarauMaker", function () {
         deploySarauMakerFixture
       );
 
-      expect(await sarauMaker.tokenImplementation()).to.equal(sarauNFT.address);
+      expect(await sarauMaker.nftImplementation()).to.equal(sarauNFT.address);
       expect(await sarauMaker.currency()).to.equal(
         ethers.utils.formatBytes32String(CURRENCY)
       );
@@ -232,7 +232,9 @@ describe("SarauMaker", function () {
 
       await time.increaseTo(endDate + 1000);
 
-      await expect(sarauMaker.mint(0)).to.revertedWith("outside mint window");
+      await expect(
+        sarauMaker.mint(0, ethers.utils.formatBytes32String(""))
+      ).to.revertedWith("outside mint window");
     });
 
     it("Should revert with already minted", async function () {
@@ -260,9 +262,11 @@ describe("SarauMaker", function () {
         )
       ).to.emit(sarauMaker, "SarauCreated");
 
-      await sarauMaker.mint(0);
+      await sarauMaker.mint(0, ethers.utils.formatBytes32String(""));
 
-      await expect(sarauMaker.mint(0)).to.revertedWith("already minted");
+      await expect(
+        sarauMaker.mint(0, ethers.utils.formatBytes32String(""))
+      ).to.revertedWith("already minted");
     });
 
     it("Should revert with max mint reached", async function () {
@@ -292,15 +296,19 @@ describe("SarauMaker", function () {
         )
       ).to.emit(sarauMaker, "SarauCreated");
 
-      sarauMaker.mint(0);
+      sarauMaker.mint(0, ethers.utils.formatBytes32String(""));
 
-      await expect(sarauMaker.connect(otherAccount).mint(0)).to.revertedWith(
-        "max mint reached"
-      );
+      await expect(
+        sarauMaker
+          .connect(otherAccount)
+          .mint(0, ethers.utils.formatBytes32String(""))
+      ).to.revertedWith("max mint reached");
     });
 
     it("Should create a new Sarau and mint without redstone fee", async function () {
-      const { sarauMaker } = await loadFixture(deploySarauMakerFixture);
+      const { sarauMaker, sarauNFT } = await loadFixture(
+        deploySarauMakerFixture
+      );
 
       const timeNow = await time.latest();
 
@@ -324,13 +332,17 @@ describe("SarauMaker", function () {
         )
       ).to.emit(sarauMaker, "SarauCreated");
 
-      await sarauMaker.mint(0);
+      await sarauMaker.mint(0, ethers.utils.formatBytes32String(""));
 
-      await expect(sarauMaker.mint(0)).to.revertedWith("max mint reached");
+      await expect(
+        sarauMaker.mint(0, ethers.utils.formatBytes32String(""))
+      ).to.revertedWith("max mint reached");
 
       const sarauCreated = await sarauMaker.getSarau(0);
 
-      expect(sarauCreated.minted).to.equal(1);
+      const nftInstance = sarauNFT.attach(sarauCreated);
+
+      expect(await nftInstance.minted()).to.equal(1);
     });
   });
 });

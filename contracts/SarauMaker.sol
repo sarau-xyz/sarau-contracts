@@ -2,7 +2,6 @@
 pragma solidity ^0.8.4;
 
 import "./SarauNFT.sol";
-import "./SarauMinter.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "redstone-evm-connector/lib/contracts/message-based/PriceAware.sol";
@@ -18,7 +17,7 @@ contract SarauMaker is AccessControl, PriceAware {
     uint256 public creationUSDFee;
 
     /**
-     * @dev All Sarau minter addresses
+     * @dev All Saraus addresses
      */
     mapping(uint256 => address) public saraus;
 
@@ -26,10 +25,6 @@ contract SarauMaker is AccessControl, PriceAware {
      * @dev SarauNFT address
      */
     address public immutable nftImplementation;
-    /**
-     * @dev SarauMinter address
-     */
-    address public immutable minterImplementation;
 
     /**
      * @dev Blockchain native currency symbol, will be used in RedStone oracle
@@ -51,15 +46,10 @@ contract SarauMaker is AccessControl, PriceAware {
      */
     event ReceivedEther(address indexed sender, uint256 indexed amount);
     event EtherFlushed(address indexed sender, uint256 amount);
-    event SarauCreated(address indexed owner, uint256 indexed id);
+    event SarauCreated(address indexed nft, uint256 indexed id);
 
-    constructor(
-        address nftImplementation_,
-        address minterImplementation_,
-        bytes32 currency_
-    ) {
+    constructor(address nftImplementation_, bytes32 currency_) {
         nftImplementation = nftImplementation_;
-        minterImplementation = minterImplementation_;
         currency = currency_;
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
@@ -67,18 +57,15 @@ contract SarauMaker is AccessControl, PriceAware {
     /**
      * @dev Creates a new Sarau.
      */
-
-    // TODO change this to two steps
     function createSarau(
         uint256 maxMint_,
         uint256 startDate_,
         uint256 endDate_,
-        string calldata uri_,
         string calldata homepage_,
         string calldata name,
         string calldata symbol,
-        bytes32 code_
-    ) external payable returns (uint256) {
+        string calldata uri_
+    ) external payable returns (uint256 index) {
         require(msg.value == creationEtherFee(), "incorrect fee");
         require(startDate_ > 0, "startDate_ must be greater than zero");
         require(endDate_ > 0, "endDate_ must be greater than zero");
@@ -86,36 +73,37 @@ contract SarauMaker is AccessControl, PriceAware {
             endDate_ > startDate_,
             "endDate_ must be greater than startDate_"
         );
-        
+
         // clone SarauNFT
         address nftClone = Clones.clone(nftImplementation);
-        SarauNFT(nftClone).initialize(name, symbol, uri_);
-
-        // clone SarauMinter
-        address minterClone = Clones.clone(minterImplementation);
-        SarauMinter(minterClone).initialize(
+        SarauNFT(nftClone).initialize(
             maxMint_,
             startDate_,
             endDate_,
             homepage_,
-            code_,
-            nftClone
+            name,
+            symbol,
+            uri_
         );
 
-        uint256 createdIndex = currentIndex;
+        SarauNFT(nftClone).transferOwnership(_msgSender());
+
+        index = currentIndex;
+        saraus[index] = nftClone;
+        emit SarauCreated(nftClone, index);
 
         currentIndex++;
-
-        emit SarauCreated(nftClone, currentIndex);
-
-        return createdIndex;
     }
 
     /**
      * @dev Return a single Sarau by provided index.
      */
-    function getSarau(uint256 index_) external view returns (address) {
+    function getSarau(uint256 index_) public view returns (address) {
         return saraus[index_];
+    }
+
+    function mint(uint256 index_, bytes32 code_) external returns (uint256) {
+        return SarauNFT(getSarau(index_)).mint(code_);
     }
 
     /**
@@ -126,6 +114,16 @@ contract SarauMaker is AccessControl, PriceAware {
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         redstoneSigner = redstoneSigner_;
+    }
+
+    function isSignerAuthorized(address _receivedSigner)
+        public
+        view
+        virtual
+        override
+        returns (bool)
+    {
+        return redstoneSigner == _receivedSigner;
     }
 
     /**
@@ -158,11 +156,11 @@ contract SarauMaker is AccessControl, PriceAware {
      * @param _to. The address to send the funds to.
      */
     function flushETH(address _to) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_to != address(0), "CANNOT WITHDRAW TO ZERO ADDRESS");
+        require(_to != address(0), "cannot withdraw to zero address");
 
         uint256 contractBalance = address(this).balance;
 
-        require(contractBalance > 0, "NO ETHER TO WITHDRAW");
+        require(contractBalance > 0, "no ether to withdraw");
 
         payable(_to).transfer(contractBalance);
 
@@ -174,15 +172,5 @@ contract SarauMaker is AccessControl, PriceAware {
      */
     receive() external payable {
         emit ReceivedEther(msg.sender, msg.value);
-    }
-
-    function isSignerAuthorized(address _receivedSigner)
-        public
-        view
-        virtual
-        override
-        returns (bool)
-    {
-        return _receivedSigner == redstoneSigner;
     }
 }

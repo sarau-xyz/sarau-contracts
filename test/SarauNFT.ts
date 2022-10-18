@@ -1,4 +1,4 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
@@ -24,13 +24,21 @@ describe("SarauNFT", function () {
         deploySarauNFTFixture
       );
 
+      const timeNow = await time.latest();
+
       await sarauNFT.initialize(
-        "NFT",
+        2,
+        timeNow - 1,
+        timeNow + 1000,
+        "https://nft.link",
         "Non Fungible Token",
+        "NFT",
         "https://miro.medium.com/max/560/1*YrmTwdjEuo3vDwGhagxslQ.jpeg"
       );
 
-      await sarauNFT.mint(otherAccount.address);
+      await sarauNFT
+        .connect(otherAccount)
+        .mint(ethers.utils.formatBytes32String(""));
 
       expect(await sarauNFT.balanceOf(otherAccount.address)).to.be.eq(1);
     });
@@ -40,9 +48,11 @@ describe("SarauNFT", function () {
         deploySarauNFTFixture
       );
 
-      await expect(sarauNFT.mint(otherAccount.address)).to.be.revertedWith(
-        "Ownable: caller is not the owner"
-      );
+      await expect(
+        sarauNFT
+          .connect(otherAccount)
+          .setCode(ethers.utils.formatBytes32String(""))
+      ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
 });
