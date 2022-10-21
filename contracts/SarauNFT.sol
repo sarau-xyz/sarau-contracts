@@ -7,7 +7,6 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 contract SarauNFT is ERC721AUpgradeable, Initializable, OwnableUpgradeable {
     uint256 public maxMint;
-    uint256 public minted;
     uint256 public startDate;
     uint256 public endDate;
     string public homepage;
@@ -69,8 +68,8 @@ contract SarauNFT is ERC721AUpgradeable, Initializable, OwnableUpgradeable {
     /**
      * @dev Mint one Sarau NFT.
      */
-    function mint(bytes32 code_) external payable returns (uint256) {
-        require(maxMint > minted, "max mint reached");
+    function mint(bytes32 code_) external returns (uint256) {
+        require(maxMint > totalSupply(), "max mint reached");
         require(
             block.timestamp >= startDate && block.timestamp <= endDate,
             "outside mint window"
@@ -80,10 +79,9 @@ contract SarauNFT is ERC721AUpgradeable, Initializable, OwnableUpgradeable {
 
         // update state
         addressToMints[_msgSender()] = 1;
-        minted++;
 
         _mint(_msgSender(), 1);
 
-        return minted;
+        return totalSupply();
     }
 }
