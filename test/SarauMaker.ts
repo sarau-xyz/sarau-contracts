@@ -342,7 +342,7 @@ describe("SarauMaker", function () {
 
       const nftInstance = sarauNFT.attach(sarauCreated);
 
-      expect(await nftInstance.minted()).to.equal(1);
+      expect(await nftInstance.totalSupply()).to.equal(1);
     });
   });
 });
