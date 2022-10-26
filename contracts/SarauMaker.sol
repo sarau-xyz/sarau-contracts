@@ -160,8 +160,8 @@ contract SarauMaker is AccessControl, PriceAware {
         /**
          * the above conversion is needed because of multiplication of two numbers
          * with decimal point moved to the right
-         *  */ 
-        return (etherPrice * creationUSDFee) / 1**8;
+         *  */
+        return (etherPrice * creationUSDFee) / 1e8;
     }
 
     /**
