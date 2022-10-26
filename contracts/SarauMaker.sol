@@ -127,27 +127,41 @@ contract SarauMaker is AccessControl, PriceAware {
     }
 
     /**
-     * @dev Set creation fee.
+     * @dev Set creationUSDFee.
+     *
+     * Must be provided with decimal point moved 8 places to the right
+     *
+     * eg.: 0.2 must be provided as 20000000
      */
-    function setCreationUSDFee(uint256 creationFee_)
+    function setCreationUSDFee(uint256 creationUSDFee_)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        creationUSDFee = creationFee_;
+        creationUSDFee = creationUSDFee_;
     }
 
     /**
      * @dev Update native currency price.
      */
     function updateEtherPrice() external {
+        /**
+         * this price is returned moved by 8 decimal point to the right
+         *
+         * eg.: 0.72 will be 72000000
+         */
         etherPrice = getPriceFromMsg(currency);
     }
 
     /**
-     * @dev Return creation fee in Ether.
+     * @dev Return creation fee in Ether with decimal places moved 8
+     * places to the right.
      */
     function creationEtherFee() public view returns (uint256) {
-        return etherPrice * creationUSDFee;
+        /**
+         * the above conversion is needed because of multiplication of two numbers
+         * with decimal point moved to the right
+         *  */ 
+        return (etherPrice * creationUSDFee) / 1**8;
     }
 
     /**
