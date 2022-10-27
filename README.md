@@ -8,8 +8,8 @@ Sarau is a dApp that enable users to collect NFTs that represent moments in a re
 # Deployed contracts
 
 Alfajores: 
-- Sarau Maker `0x1B1fe91B4DDFdB408676DC51eA5F7248CD0EcB2B`
-- Sarau NFT `0xf6f9D541302463292e3c2C56494078CF70a37f88`
+- Sarau Maker `0x6CC21F484977F7278CF761ad3f38f2E12667DbC3`
+- Sarau NFT `0x76484d2fbacc85C1965F4767B4B7f1eFd4A51D41`
 
 # Commands
 

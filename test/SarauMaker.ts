@@ -4,9 +4,11 @@ import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
 import { WrapperBuilder } from "redstone-evm-connector";
 
+const DECIMALS = 1e18;
+
 const CURRENCY = "CELO",
-  ETHER_PRICE = 10,
-  CREATION_FEE = 9;
+  ETHER_PRICE = 2000, // 8 decimals to the left because redstone prod return like this
+  CREATION_USD_FEE = 0.5 * DECIMALS; // 0.2 USD
 
 describe("SarauMaker", function () {
   async function deploySarauMakerFixture() {
@@ -131,17 +133,45 @@ describe("SarauMaker", function () {
       await sarauMaker.updateEtherPrice();
 
       expect(await sarauMaker.etherPrice()).to.equal(
-        BigNumber.from(ETHER_PRICE).mul(1e8)
+        BigNumber.from(ETHER_PRICE.toString()).mul(DECIMALS.toString())
+      );
+    });
+
+    it("Should set creationUSDFee", async function () {
+      const { sarauMaker } = await loadFixture(deploySarauMakerFixture);
+
+      expect(await sarauMaker.creationUSDFee()).to.equal(BigNumber.from("0"));
+
+      await sarauMaker.setCreationUSDFee(CREATION_USD_FEE.toString());
+
+      expect(await sarauMaker.creationUSDFee()).to.equal(
+        CREATION_USD_FEE.toString()
+      );
+    });
+
+    it("Should has correct creationEtherFee", async function () {
+      const { sarauMaker } = await loadFixture(deploySarauMakerFixture);
+
+      await sarauMaker.updateEtherPrice();
+
+      expect(await sarauMaker.etherPrice()).to.equal(
+        BigNumber.from(ETHER_PRICE.toString()).mul(DECIMALS.toString())
       );
 
-      expect(await sarauMaker.creationEtherFee()).to.equal(
-        BigNumber.from(ETHER_PRICE).mul(BigNumber.from("0"))
+      await sarauMaker.setCreationUSDFee(CREATION_USD_FEE.toString());
+
+      expect(await sarauMaker.creationUSDFee()).to.equal(
+        CREATION_USD_FEE.toString()
       );
 
-      await sarauMaker.setCreationUSDFee(CREATION_FEE);
+      const creationEtherFeeRes = await sarauMaker.creationEtherFee();
 
-      expect(await sarauMaker.creationEtherFee()).to.equal(
-        BigNumber.from(ETHER_PRICE).mul(BigNumber.from(CREATION_FEE))
+      console.log(creationEtherFeeRes, "creationEtherFeeRes");
+
+      expect(creationEtherFeeRes).to.equal(
+        BigNumber.from(CREATION_USD_FEE.toString())
+          .mul(1e8)
+          .div(BigNumber.from(ETHER_PRICE).mul(DECIMALS.toString()))
       );
     });
 

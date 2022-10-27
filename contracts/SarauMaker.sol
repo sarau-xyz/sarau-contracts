@@ -129,7 +129,7 @@ contract SarauMaker is AccessControl, PriceAware {
     /**
      * @dev Set creationUSDFee.
      *
-     * Must be provided with decimal point moved 8 places to the right
+     * Must be provided with decimal point moved 18 places to the right
      *
      * eg.: 0.2 must be provided as 20000000
      */
@@ -149,19 +149,15 @@ contract SarauMaker is AccessControl, PriceAware {
          *
          * eg.: 0.72 will be 72000000
          */
-        etherPrice = getPriceFromMsg(currency);
+        etherPrice = getPriceFromMsg(currency) * 1e10;
     }
 
     /**
-     * @dev Return creation fee in Ether with decimal places moved 8
+     * @dev Return creation fee in Ether with decimal places moved 18
      * places to the right.
      */
     function creationEtherFee() public view returns (uint256) {
-        /**
-         * the above conversion is needed because of multiplication of two numbers
-         * with decimal point moved to the right
-         *  */
-        return (etherPrice * creationUSDFee) / 1e8;
+        return (etherPrice == 0 ? 0 : (creationUSDFee * 1e8) / etherPrice);
     }
 
     /**
