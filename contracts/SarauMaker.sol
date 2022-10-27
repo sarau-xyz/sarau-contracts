@@ -42,15 +42,28 @@ contract SarauMaker is AccessControl, PriceAware {
     address public redstoneSigner;
 
     /**
+     * @dev RedStone price decimals
+     */
+    uint256 public redstoneDecimals;
+
+    /**
      * @dev Events
      */
     event ReceivedEther(address indexed sender, uint256 indexed amount);
     event EtherFlushed(address indexed sender, uint256 amount);
+    event RedstoneSignerChanged(address signer);
+    event RedstoneDecimalsChanged(uint256 decimals);
+    event CreationUSDFeeChanged(uint256 indexed fee);
     event SarauCreated(address indexed nft, uint256 indexed id);
 
-    constructor(address nftImplementation_, bytes32 currency_) {
+    constructor(
+        address nftImplementation_,
+        bytes32 currency_,
+        uint256 redstoneDecimals_
+    ) {
         nftImplementation = nftImplementation_;
         currency = currency_;
+        redstoneDecimals = redstoneDecimals_;
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
 
@@ -114,6 +127,18 @@ contract SarauMaker is AccessControl, PriceAware {
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         redstoneSigner = redstoneSigner_;
+        emit RedstoneSignerChanged(redstoneSigner_);
+    }
+
+    /**
+     * @dev Set Redstone Finance signer address.
+     */
+    function setRedstoneDecimals(uint256 redstoneDecimals_)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        redstoneDecimals = redstoneDecimals_;
+        emit RedstoneDecimalsChanged(redstoneDecimals_);
     }
 
     function isSignerAuthorized(address _receivedSigner)
@@ -138,6 +163,7 @@ contract SarauMaker is AccessControl, PriceAware {
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         creationUSDFee = creationUSDFee_;
+        emit CreationUSDFeeChanged(creationUSDFee_);
     }
 
     /**
@@ -147,7 +173,7 @@ contract SarauMaker is AccessControl, PriceAware {
         /**
          * this price is returned moved by 8 decimal point to the right
          *
-         * eg.: 0.72 will be 72000000
+         * eg.: 2_000 will be 200_000_000_000
          */
         etherPrice = getPriceFromMsg(currency);
     }
@@ -157,7 +183,9 @@ contract SarauMaker is AccessControl, PriceAware {
      * places to the right.
      */
     function creationEtherFee() public view returns (uint256) {
-        return etherPrice == 0 ? 0 : creationUSDFee / etherPrice;
+        return
+            (etherPrice == 0 ? 0 : creationUSDFee / etherPrice) *
+            redstoneDecimals;
     }
 
     /**

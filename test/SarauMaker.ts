@@ -4,11 +4,14 @@ import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
 import { WrapperBuilder } from "redstone-evm-connector";
 
-const DECIMALS = 1e18;
+const ETHER_DECIMALS = 1e18,
+  REDSTONE_DECIMALS = 1e8,
+  REDSTONE_SIGNER = "0xFE71e9691B9524BC932C23d0EeD5c9CE41161884"; // mock signer
 
 const CURRENCY = "CELO",
-  ETHER_PRICE = 2000, // 8 decimals to the left because redstone prod return like this
-  CREATION_USD_FEE = 0.5 * DECIMALS; // 0.2 USD
+  ETHER_PRICE = BigNumber.from("2000"), // 8 decimals to the left because redstone prod return like this
+  CREATION_USD_FEE = BigNumber.from((0.5 * ETHER_DECIMALS).toString()),
+  EXPECTED_ETHER_FEE = BigNumber.from((0.00025 * ETHER_DECIMALS).toString()); // 0.2 USD
 
 describe("SarauMaker", function () {
   async function deploySarauMakerFixture() {
@@ -20,17 +23,16 @@ describe("SarauMaker", function () {
     const SarauMaker = await ethers.getContractFactory("SarauMaker");
     const sarauMaker = await SarauMaker.deploy(
       sarauNFT.address,
-      ethers.utils.formatBytes32String(CURRENCY)
+      ethers.utils.formatBytes32String(CURRENCY),
+      REDSTONE_DECIMALS
     );
 
     // mock signer
-    await sarauMaker.setRedstoneSigner(
-      "0xFE71e9691B9524BC932C23d0EeD5c9CE41161884"
-    );
+    await sarauMaker.setRedstoneSigner(REDSTONE_SIGNER);
 
     return {
       sarauMaker: WrapperBuilder.mockLite(sarauMaker).using({
-        [CURRENCY]: ETHER_PRICE,
+        [CURRENCY]: ETHER_PRICE.toNumber(),
       }),
       sarauNFT,
       owner,
@@ -39,16 +41,93 @@ describe("SarauMaker", function () {
   }
 
   describe("Deployment", function () {
-    it("Should have correct SarauNFT implementation and currency", async function () {
+    it("Should have correct SarauNFT", async function () {
       const { sarauNFT, sarauMaker } = await loadFixture(
         deploySarauMakerFixture
       );
 
       expect(await sarauMaker.nftImplementation()).to.equal(sarauNFT.address);
+    });
+
+    it("Should have correct currency", async function () {
+      const { sarauNFT, sarauMaker } = await loadFixture(
+        deploySarauMakerFixture
+      );
+
       expect(await sarauMaker.currency()).to.equal(
         ethers.utils.formatBytes32String(CURRENCY)
       );
-      expect(await sarauMaker.creationUSDFee()).to.equal(0);
+    });
+
+    it("Should have correct Redstone Signer and Decimals", async function () {
+      const { sarauMaker } = await loadFixture(deploySarauMakerFixture);
+
+      expect(await sarauMaker.redstoneSigner()).to.equal(REDSTONE_SIGNER);
+      expect(await sarauMaker.redstoneDecimals()).to.equal(REDSTONE_DECIMALS);
+    });
+  });
+
+  describe("Sarau admin flow", function () {
+    it("Should set Redstone Signer", async function () {
+      const { sarauMaker } = await loadFixture(deploySarauMakerFixture);
+
+      await sarauMaker.setRedstoneSigner(ethers.constants.AddressZero);
+
+      expect(await sarauMaker.redstoneSigner()).to.equal(
+        ethers.constants.AddressZero
+      );
+    });
+
+    it("Should set Redstone Decimals", async function () {
+      const { sarauMaker } = await loadFixture(deploySarauMakerFixture);
+
+      const newDecimals = 2;
+
+      await sarauMaker.setRedstoneDecimals(newDecimals);
+
+      expect(await sarauMaker.redstoneDecimals()).to.equal(newDecimals);
+    });
+
+    it("Should update ether price", async function () {
+      const { sarauMaker } = await loadFixture(deploySarauMakerFixture);
+
+      expect(await sarauMaker.etherPrice()).to.equal(BigNumber.from("0"));
+
+      await sarauMaker.updateEtherPrice();
+
+      expect(await sarauMaker.etherPrice()).to.equal(
+        ETHER_PRICE.mul(BigNumber.from(REDSTONE_DECIMALS.toString()))
+      );
+    });
+
+    it("Should set creationUSDFee", async function () {
+      const { sarauMaker } = await loadFixture(deploySarauMakerFixture);
+
+      expect(await sarauMaker.creationUSDFee()).to.equal(BigNumber.from("0"));
+
+      await sarauMaker.setCreationUSDFee(CREATION_USD_FEE.toString());
+
+      expect(await sarauMaker.creationUSDFee()).to.equal(
+        CREATION_USD_FEE.toString()
+      );
+    });
+
+    it("Should has correct creationEtherFee", async function () {
+      const { sarauMaker } = await loadFixture(deploySarauMakerFixture);
+
+      await sarauMaker.updateEtherPrice();
+
+      expect(await sarauMaker.etherPrice()).to.equal(
+        ETHER_PRICE.mul(BigNumber.from(REDSTONE_DECIMALS.toString()))
+      );
+
+      await sarauMaker.setCreationUSDFee(CREATION_USD_FEE.toString());
+
+      expect(await sarauMaker.creationUSDFee()).to.equal(
+        CREATION_USD_FEE.toString()
+      );
+
+      expect(await sarauMaker.creationEtherFee()).to.equal(EXPECTED_ETHER_FEE);
     });
   });
 
@@ -123,56 +202,6 @@ describe("SarauMaker", function () {
           symbol
         )
       ).to.revertedWith("endDate_ must be greater than startDate_");
-    });
-
-    it("Should update ether price", async function () {
-      const { sarauMaker } = await loadFixture(deploySarauMakerFixture);
-
-      expect(await sarauMaker.etherPrice()).to.equal(BigNumber.from("0"));
-
-      await sarauMaker.updateEtherPrice();
-
-      expect(await sarauMaker.etherPrice()).to.equal(
-        BigNumber.from(ETHER_PRICE.toString())
-      );
-    });
-
-    it("Should set creationUSDFee", async function () {
-      const { sarauMaker } = await loadFixture(deploySarauMakerFixture);
-
-      expect(await sarauMaker.creationUSDFee()).to.equal(BigNumber.from("0"));
-
-      await sarauMaker.setCreationUSDFee(CREATION_USD_FEE.toString());
-
-      expect(await sarauMaker.creationUSDFee()).to.equal(
-        CREATION_USD_FEE.toString()
-      );
-    });
-
-    it("Should has correct creationEtherFee", async function () {
-      const { sarauMaker } = await loadFixture(deploySarauMakerFixture);
-
-      await sarauMaker.updateEtherPrice();
-
-      expect(await sarauMaker.etherPrice()).to.equal(
-        BigNumber.from(ETHER_PRICE.toString())
-      );
-
-      await sarauMaker.setCreationUSDFee(CREATION_USD_FEE.toString());
-
-      expect(await sarauMaker.creationUSDFee()).to.equal(
-        CREATION_USD_FEE.toString()
-      );
-
-      const creationEtherFeeRes = await sarauMaker.creationEtherFee();
-
-      console.log(creationEtherFeeRes, "creationEtherFeeRes");
-
-      expect(creationEtherFeeRes).to.equal(
-        BigNumber.from(CREATION_USD_FEE.toString())
-          .mul(1e8)
-          .div(BigNumber.from(ETHER_PRICE).mul(DECIMALS.toString()))
-      );
     });
 
     it("Should create with correct fee", async function () {
