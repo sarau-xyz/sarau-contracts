@@ -149,7 +149,7 @@ contract SarauMaker is AccessControl, PriceAware {
          *
          * eg.: 0.72 will be 72000000
          */
-        etherPrice = getPriceFromMsg(currency) * 1e10;
+        etherPrice = getPriceFromMsg(currency);
     }
 
     /**
@@ -157,7 +157,7 @@ contract SarauMaker is AccessControl, PriceAware {
      * places to the right.
      */
     function creationEtherFee() public view returns (uint256) {
-        return (etherPrice == 0 ? 0 : (creationUSDFee * 1e8) / etherPrice);
+        return etherPrice == 0 ? 0 : creationUSDFee / etherPrice;
     }
 
     /**
