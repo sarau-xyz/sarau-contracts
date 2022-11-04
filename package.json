@@ -2,6 +2,11 @@
   "name": "sarau-contracts",
   "license": "MIT",
   "description": "Solidity contracts for Sarau dApp",
+  "homepage": "https://sarau.xyz",
+  "repository": {
+    "url": "https://github.com/sarau-xyz/sarau-contracts.git",
+    "type": "git"
+  },
   "version": "1.0.1",
   "author": {
     "name": "Gustavo Toledo",
@@ -12,9 +17,11 @@
     "test": "npx hardhat test",
     "deploy": "npx hardhat run ./scripts/deploy.ts"
   },
+  "private": false,
   "dependencies": {
     "@openzeppelin/contracts": "^4.7.3",
     "@openzeppelin/contracts-upgradeable": "^4.8.0-rc.1",
+    "dotenv": "^16.0.3",
     "erc721a-upgradeable": "^4.2.2",
     "hardhat": "^2.11.1"
   },

@@ -1,22 +1,22 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
-import fs from "fs";
+import 'dotenv/config';
 
-const mnemonic = fs.readFileSync(".secret").toString();
-const apikey = fs.readFileSync(".apikey").toString();
+const mnemonic = process.env.MNEMONIC;
+const apikey = process.env.API_KEY;
 
 const config: HardhatUserConfig = {
   solidity: "0.8.4",
   networks: {
     alfajores: {
-      url: "https://alfajores-forno.celo-testnet.org",
+      url: "https://celo-hackathon.lavanet.xyz/celo-alfajores/http",
       chainId: 44787,
       accounts: {
         mnemonic,
       },
     },
     celo: {
-      url: "https://forno.celo.org",
+      url: "https://celo-hackathon.lavanet.xyz/celo/http",
       chainId: 42220,
       accounts: {
         mnemonic,
