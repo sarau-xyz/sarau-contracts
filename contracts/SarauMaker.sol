@@ -4,13 +4,17 @@ pragma solidity ^0.8.4;
 import "./SarauNFT.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
 import "redstone-evm-connector/lib/contracts/message-based/PriceAware.sol";
 
 contract SarauMaker is AccessControl, PriceAware {
+    using Counters for Counters.Counter;
+
     /**
      * @dev Current index
      */
-    uint256 public currentIndex;
+    Counters.Counter private sarauIndexes;
+    
     /**
      * @dev USD fee needed to create a new Sarau
      */
@@ -22,14 +26,20 @@ contract SarauMaker is AccessControl, PriceAware {
     mapping(uint256 => address) public saraus;
 
     /**
+     * @dev Saraus created by users
+     */
+    // TODO add enumerable set instead uint256
+    private mapping(address => uint256[]) public addressesForSaraus;
+
+    /**
      * @dev SarauNFT address
      */
-    address public immutable nftImplementation;
+    address public immutable NFT_IMPLEMENTATION;
 
     /**
      * @dev Blockchain native currency symbol, will be used in RedStone oracle
      */
-    bytes32 public immutable currency;
+    bytes32 public immutable CURRENCY;
 
     /**
      * @dev Ether price from RedStone oracle
@@ -61,8 +71,8 @@ contract SarauMaker is AccessControl, PriceAware {
         bytes32 currency_,
         uint256 redstoneDecimals_
     ) {
-        nftImplementation = nftImplementation_;
-        currency = currency_;
+        NFT_IMPLEMENTATION = nftImplementation_;
+        CURRENCY = currency_;
         redstoneDecimals = redstoneDecimals_;
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
@@ -88,7 +98,7 @@ contract SarauMaker is AccessControl, PriceAware {
         );
 
         // clone SarauNFT
-        address nftClone = Clones.clone(nftImplementation);
+        address nftClone = Clones.clone(NFT_IMPLEMENTATION);
         SarauNFT(nftClone).initialize(
             maxMint_,
             startDate_,
@@ -101,11 +111,12 @@ contract SarauMaker is AccessControl, PriceAware {
 
         SarauNFT(nftClone).transferOwnership(_msgSender());
 
-        index = currentIndex;
+        index = sarauIndexes.current();
         saraus[index] = nftClone;
+        addressesForSaraus[_msgSender()].push(index);
         emit SarauCreated(nftClone, index);
 
-        currentIndex++;
+        sarauIndexes.increment();
     }
 
     /**
@@ -118,6 +129,9 @@ contract SarauMaker is AccessControl, PriceAware {
     function mint(uint256 index_, bytes32 code_) external returns (uint256) {
         return SarauNFT(getSarau(index_)).mint(code_);
     }
+
+// TODO use with enumerableset
+    function getSarausByUser
 
     /**
      * @dev Set Redstone Finance signer address.
@@ -175,7 +189,7 @@ contract SarauMaker is AccessControl, PriceAware {
          *
          * eg.: 2_000 will be 200_000_000_000
          */
-        etherPrice = getPriceFromMsg(currency);
+        etherPrice = getPriceFromMsg(CURRENCY);
     }
 
     /**
@@ -209,6 +223,6 @@ contract SarauMaker is AccessControl, PriceAware {
      * @dev Fallback function for receiving Ether
      */
     receive() external payable {
-        emit ReceivedEther(msg.sender, msg.value);
+        emit ReceivedEther(_msgSender(), msg.value);
     }
 }
