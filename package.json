@@ -23,7 +23,8 @@
     "@openzeppelin/contracts-upgradeable": "^4.8.0-rc.1",
     "dotenv": "^16.0.3",
     "erc721a-upgradeable": "^4.2.2",
-    "hardhat": "^2.11.1"
+    "hardhat": "^2.11.1",
+    "redstone-evm-connector": "^2.1.26"
   },
   "devDependencies": {
     "@ethersproject/abi": "^5.4.7",

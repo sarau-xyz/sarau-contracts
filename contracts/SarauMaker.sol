@@ -5,36 +5,39 @@ import "./SarauNFT.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 import "redstone-evm-connector/lib/contracts/message-based/PriceAware.sol";
 
 contract SarauMaker is AccessControl, PriceAware {
     using Counters for Counters.Counter;
-
-    /**
-     * @dev Current index
-     */
-    Counters.Counter private sarauIndexes;
-    
-    /**
-     * @dev USD fee needed to create a new Sarau
-     */
-    uint256 public creationUSDFee;
-
-    /**
-     * @dev All Saraus addresses
-     */
-    mapping(uint256 => address) public saraus;
-
-    /**
-     * @dev Saraus created by users
-     */
-    // TODO add enumerable set instead uint256
-    private mapping(address => uint256[]) public addressesForSaraus;
+    using EnumerableSet for EnumerableSet.UintSet;
+    using EnumerableMap for EnumerableMap.UintToAddressMap;
 
     /**
      * @dev SarauNFT address
      */
     address public immutable NFT_IMPLEMENTATION;
+
+    /**
+     * @dev NFTs minted using SarauMaker contract
+     */
+    Counters.Counter private minted;
+
+    /**
+     * @dev All Saraus addresses
+     */
+    EnumerableMap.UintToAddressMap private saraus;
+
+    /**
+     * @dev Saraus Indexes created by users
+     */
+    mapping(address => EnumerableSet.UintSet) private addressesForSaraus;
+
+    /**
+     * @dev Save address that already minted.
+     */
+    mapping(uint256 => mapping(address => uint8)) public addressToMints;
 
     /**
      * @dev Blockchain native currency symbol, will be used in RedStone oracle
@@ -55,6 +58,11 @@ contract SarauMaker is AccessControl, PriceAware {
      * @dev RedStone price decimals
      */
     uint256 public redstoneDecimals;
+
+    /**
+     * @dev USD fee needed to create a new Sarau
+     */
+    uint256 public creationUSDFee;
 
     /**
      * @dev Events
@@ -88,7 +96,7 @@ contract SarauMaker is AccessControl, PriceAware {
         string calldata name,
         string calldata symbol,
         string calldata uri_
-    ) external payable returns (uint256 index) {
+    ) external payable {
         require(msg.value == creationEtherFee(), "incorrect fee");
         require(startDate_ > 0, "startDate_ must be greater than zero");
         require(endDate_ > 0, "endDate_ must be greater than zero");
@@ -98,8 +106,9 @@ contract SarauMaker is AccessControl, PriceAware {
         );
 
         // clone SarauNFT
-        address nftClone = Clones.clone(NFT_IMPLEMENTATION);
-        SarauNFT(nftClone).initialize(
+        SarauNFT nftClone = SarauNFT(Clones.clone(NFT_IMPLEMENTATION));
+
+        nftClone.initialize(
             maxMint_,
             startDate_,
             endDate_,
@@ -109,29 +118,87 @@ contract SarauMaker is AccessControl, PriceAware {
             uri_
         );
 
-        SarauNFT(nftClone).transferOwnership(_msgSender());
+        nftClone.grantRole(nftClone.DEFAULT_ADMIN_ROLE(), _msgSender());
 
-        index = sarauIndexes.current();
-        saraus[index] = nftClone;
-        addressesForSaraus[_msgSender()].push(index);
-        emit SarauCreated(nftClone, index);
+        // index is same of saraus size plus 1
+        // because no sarau can exist on index 0
+        uint256 index = saraus.length() + 1;
 
-        sarauIndexes.increment();
+        saraus.set(index, address(nftClone));
+
+        addressesForSaraus[_msgSender()].add(index);
+
+        emit SarauCreated(address(nftClone), index);
     }
 
     /**
      * @dev Return a single Sarau by provided index.
      */
-    function getSarau(uint256 index_) public view returns (address) {
-        return saraus[index_];
+    function getSarauAddress(uint256 index_) public view returns (address) {
+        return saraus.get(index_);
+    }
+
+    /**
+     * @dev Verify if user already minted;
+     */
+    function canMint(uint256 index_, address wallet)
+        public
+        view
+        returns (bool)
+    {
+        return addressToMints[index_][wallet] != 1;
     }
 
     function mint(uint256 index_, bytes32 code_) external returns (uint256) {
-        return SarauNFT(getSarau(index_)).mint(code_);
+        SarauNFT nft = SarauNFT(getSarauAddress(index_));
+
+        require(nft.maxMint() > nft.totalSupply(), "max mint reached");
+        require(
+            block.timestamp >= nft.startDate() &&
+                block.timestamp <= nft.endDate(),
+            "outside mint window"
+        );
+        require(canMint(index_, _msgSender()), "already minted");
+
+        // update state
+        addressToMints[index_][_msgSender()] = 1;
+
+        nft.mintTo(1, _msgSender(), code_);
+
+        minted.increment();
+
+        return nft.totalSupply();
     }
 
-// TODO use with enumerableset
-    function getSarausByUser
+    // 3,4,5,6
+    // 6 - 3 + 1 = 4
+
+    // 4,5,6,7,8,9
+    // 9 - 4 + 1 = 6
+    function getSarausByWallet(
+        address wallet_,
+        uint256 startIndex_,
+        uint256 endIndex_
+    ) external view returns (uint256[] memory) {
+        uint256 count = endIndex_ - startIndex_ + 1;
+        uint256[] memory _sarausIndexes = new uint256[](count);
+
+        uint256 j;
+        for (uint i = startIndex_; i <= endIndex_; i++) {
+            _sarausIndexes[j] = addressesForSaraus[wallet_].at(i);
+            j++;
+        }
+
+        return _sarausIndexes;
+    }
+
+    function getNumberOFSarausCreatedByWallet(address wallet)
+        external
+        view
+        returns (uint256)
+    {
+        return addressesForSaraus[wallet].length();
+    }
 
     /**
      * @dev Set Redstone Finance signer address.
@@ -224,5 +291,24 @@ contract SarauMaker is AccessControl, PriceAware {
      */
     receive() external payable {
         emit ReceivedEther(_msgSender(), msg.value);
+    }
+
+    /**
+     * @dev Stats
+     * Stats for this contract
+     */
+
+    /**
+     * @dev Get number of saraus created using this contract
+     */
+    function getNumberOfSaraus() external view returns (uint256) {
+        return saraus.length();
+    }
+
+    /**
+     * @dev Get number of nfts minted using this contract
+     */
+    function getNumberOfMints() external view returns (uint256) {
+        return minted.current();
     }
 }

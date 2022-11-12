@@ -46,7 +46,7 @@ describe("SarauMaker", function () {
         deploySarauMakerFixture
       );
 
-      expect(await sarauMaker.nftImplementation()).to.equal(sarauNFT.address);
+      expect(await sarauMaker.NFT_IMPLEMENTATION()).to.equal(sarauNFT.address);
     });
 
     it("Should have correct currency", async function () {
@@ -54,7 +54,7 @@ describe("SarauMaker", function () {
         deploySarauMakerFixture
       );
 
-      expect(await sarauMaker.currency()).to.equal(
+      expect(await sarauMaker.CURRENCY()).to.equal(
         ethers.utils.formatBytes32String(CURRENCY)
       );
     });
@@ -292,7 +292,7 @@ describe("SarauMaker", function () {
       await time.increaseTo(endDate + 1000);
 
       await expect(
-        sarauMaker.mint(0, ethers.utils.formatBytes32String(""))
+        sarauMaker.mint(1, ethers.utils.formatBytes32String(""))
       ).to.revertedWith("outside mint window");
     });
 
@@ -321,10 +321,10 @@ describe("SarauMaker", function () {
         )
       ).to.emit(sarauMaker, "SarauCreated");
 
-      await sarauMaker.mint(0, ethers.utils.formatBytes32String(""));
+      await sarauMaker.mint(1, ethers.utils.formatBytes32String(""));
 
       await expect(
-        sarauMaker.mint(0, ethers.utils.formatBytes32String(""))
+        sarauMaker.mint(1, ethers.utils.formatBytes32String(""))
       ).to.revertedWith("already minted");
     });
 
@@ -355,12 +355,12 @@ describe("SarauMaker", function () {
         )
       ).to.emit(sarauMaker, "SarauCreated");
 
-      sarauMaker.mint(0, ethers.utils.formatBytes32String(""));
+      sarauMaker.mint(1, ethers.utils.formatBytes32String(""));
 
       await expect(
         sarauMaker
           .connect(otherAccount)
-          .mint(0, ethers.utils.formatBytes32String(""))
+          .mint(1, ethers.utils.formatBytes32String(""))
       ).to.revertedWith("max mint reached");
     });
 
@@ -391,13 +391,13 @@ describe("SarauMaker", function () {
         )
       ).to.emit(sarauMaker, "SarauCreated");
 
-      await sarauMaker.mint(0, ethers.utils.formatBytes32String(""));
+      await sarauMaker.mint(1, ethers.utils.formatBytes32String(""));
 
       await expect(
-        sarauMaker.mint(0, ethers.utils.formatBytes32String(""))
+        sarauMaker.mint(1, ethers.utils.formatBytes32String(""))
       ).to.revertedWith("max mint reached");
 
-      const sarauCreated = await sarauMaker.getSarau(0);
+      const sarauCreated = await sarauMaker.getSarauAddress(1);
 
       const nftInstance = sarauNFT.attach(sarauCreated);
 
