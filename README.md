@@ -14,7 +14,7 @@ Alfajores:
 
 Celo: 
 
-- Sarau Maker: `0x0`
+- Sarau Maker: `0x27b6B90B6519F3b3B224301366be3a10A203997f`
 
 # Develop
 
