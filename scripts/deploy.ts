@@ -2,7 +2,7 @@ import { ethers, run } from "hardhat";
 
 const REDSTONE_MAIN_SIGNER = "0x0C39486f770B26F5527BBBf942726537986Cd7eb",
   REDSTONE_DECIMALS = (1e8).toString(),
-  CREATION_USD_FEE = (0.2 * 1e18).toString(),
+  CREATION_USD_FEE = (0.1 * 1e18).toString(), // 10 cents of dolar
   BYTES_32_CURRENCY = ethers.utils.formatBytes32String("CELO");
 
 async function main() {
