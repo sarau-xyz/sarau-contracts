@@ -3,21 +3,25 @@ pragma solidity ^0.8.4;
 
 import "erc721a-upgradeable/contracts/ERC721AUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-contract SarauNFT is ERC721AUpgradeable, Initializable, OwnableUpgradeable {
+contract SarauNFT is
+    ERC721AUpgradeable,
+    Initializable,
+    AccessControlUpgradeable
+{
     uint256 public maxMint;
     uint256 public startDate;
     uint256 public endDate;
     string public homepage;
     bytes32 private code;
 
-    /**
-     * @dev Save address that already minted.
-     */
-    mapping(address => uint8) public addressToMints;
-
     string private _tokenURI;
+
+    /**
+     * @dev ROLES
+     */
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     function initialize(
         uint256 maxMint_,
@@ -36,7 +40,10 @@ contract SarauNFT is ERC721AUpgradeable, Initializable, OwnableUpgradeable {
         _tokenURI = tokenURI_;
 
         __ERC721A_init(name_, symbol_);
-        __Ownable_init();
+        __AccessControl_init();
+
+        _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
+        _grantRole(MINTER_ROLE, _msgSender());
     }
 
     /**
@@ -52,36 +59,45 @@ contract SarauNFT is ERC721AUpgradeable, Initializable, OwnableUpgradeable {
     }
 
     /**
+     * @dev See {IERC165-supportsInterface}.
+     */
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(AccessControlUpgradeable, ERC721AUpgradeable)
+        returns (bool)
+    {
+        return
+            interfaceId == type(AccessControlUpgradeable).interfaceId ||
+            super.supportsInterface(interfaceId);
+    }
+
+    /**
      * @dev Change mint code.
      */
-    function setCode(bytes32 code_) external onlyOwner {
+    function setCode(bytes32 code_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         code = code_;
     }
 
     /**
-     * @dev Verify if user already minted;
+     * @dev MINTING
      */
-    function canMint(address wallet) public view returns (bool) {
-        return addressToMints[wallet] != 1;
-    }
 
     /**
-     * @dev Mint one Sarau NFT.
+     * @notice Function to mint NFTs to a specified address. Only
+     * accessible by accounts with a role of MINTER_ROLE
+     *
+     * @param amount The amount of NFTs to be minted
+     * @param _to The address to which the NFTs will be minted to
      */
-    function mint(bytes32 code_) external returns (uint256) {
-        require(maxMint > totalSupply(), "max mint reached");
-        require(
-            block.timestamp >= startDate && block.timestamp <= endDate,
-            "outside mint window"
-        );
-        require(canMint(_msgSender()), "already minted");
+    function mintTo(
+        uint256 amount,
+        address _to,
+        bytes32 code_
+    ) external onlyRole(MINTER_ROLE) {
         require(code == code_, "invalid mint code");
 
-        // update state
-        addressToMints[_msgSender()] = 1;
-
-        _mint(_msgSender(), 1);
-
-        return totalSupply();
+        _safeMint(_to, amount);
     }
 }

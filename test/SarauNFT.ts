@@ -36,14 +36,16 @@ describe("SarauNFT", function () {
         "https://miro.medium.com/max/560/1*YrmTwdjEuo3vDwGhagxslQ.jpeg"
       );
 
-      await sarauNFT
-        .connect(otherAccount)
-        .mint(ethers.utils.formatBytes32String(""));
+      await sarauNFT.mintTo(
+        1,
+        otherAccount.address,
+        ethers.utils.formatBytes32String("")
+      );
 
       expect(await sarauNFT.balanceOf(otherAccount.address)).to.be.eq(1);
     });
 
-    it("Should fail with Ownable: caller is not the owner", async function () {
+    it("Should fail with 'AccessControl: account 0xxxxx is missing role 0xxxxx'", async function () {
       const { sarauNFT, otherAccount } = await loadFixture(
         deploySarauNFTFixture
       );
@@ -52,7 +54,7 @@ describe("SarauNFT", function () {
         sarauNFT
           .connect(otherAccount)
           .setCode(ethers.utils.formatBytes32String(""))
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      ).to.be.reverted;
     });
 
     it("Should fail with invalid mint code", async function () {
@@ -77,16 +79,19 @@ describe("SarauNFT", function () {
       await sarauNFT.setCode(ethers.utils.formatBytes32String(code));
 
       await expect(
-        sarauNFT
-          .connect(otherAccount)
-          .mint(ethers.utils.formatBytes32String(""))
+        sarauNFT.mintTo(
+          1,
+          otherAccount.address,
+          ethers.utils.formatBytes32String("")
+        )
       ).to.be.revertedWith("invalid mint code");
 
-
       await expect(
-        sarauNFT
-          .connect(otherAccount)
-          .mint(ethers.utils.formatBytes32String(code))
+        sarauNFT.mintTo(
+          1,
+          otherAccount.address,
+          ethers.utils.formatBytes32String(code)
+        )
       ).to.emit(sarauNFT, "Transfer");
     });
   });
